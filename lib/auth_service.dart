@@ -8,7 +8,8 @@ class AuthService {
   final String loginUrl = '$SERVER_IP/login';
 
   /// Register a new user
-  Future<Map<String, dynamic>> register(String username, String email, String password) async {
+  Future<Map<String, dynamic>> register(
+      String username, String email, String password) async {
     try {
       final response = await http.post(
         Uri.parse(registerUrl),
@@ -23,7 +24,8 @@ class AuthService {
       if (response.statusCode == 201) {
         return jsonDecode(response.body);
       } else {
-        throw Exception('Failed to register. Server returned: ${response.statusCode}');
+        throw Exception(
+            'Failed to register. Server returned: ${response.statusCode}');
       }
     } catch (e) {
       throw Exception('Error occurred during registration: $e');
@@ -44,10 +46,24 @@ class AuthService {
 
       if (response.statusCode == 200) {
         final responseData = jsonDecode(response.body);
-        await _storeTokenAndUserInfo(responseData['token'], responseData['user']);
-        return responseData;
+
+        // Check if the message indicates OTP sent
+        if (responseData['message'] == 'OTP sent to your email.') {
+          // Return only the message if OTP is sent
+          return {'message': responseData['message']};
+        } else {
+          // Handle unexpected 200 responses
+          throw Exception('Unexpected response: ${response.body}');
+        }
+      } else if (response.statusCode == 401) {
+        // Invalid username/email or password
+        final responseData = jsonDecode(response.body);
+        throw Exception(
+            responseData['message']); // "Invalid username/email or password"
       } else {
-        throw Exception('Failed to log in. Server returned: ${response.statusCode}');
+        // Other server errors
+        throw Exception(
+            'Failed to log in. Server returned: ${response.statusCode}');
       }
     } catch (e) {
       throw Exception('Error occurred during login: $e');
@@ -69,14 +85,7 @@ class AuthService {
   Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('authToken');
-    await prefs.remove('userInfo');  // Remove user information
-  }
-
-  /// Store the authentication token and user information
-  Future<void> _storeTokenAndUserInfo(String token, Map<String, dynamic> user) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('authToken', token);
-    await prefs.setString('userInfo', jsonEncode(user));
+    await prefs.remove('userInfo'); // Remove user information
   }
 
   /// Retrieve the authentication token

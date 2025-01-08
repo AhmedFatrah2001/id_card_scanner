@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_login/flutter_login.dart';
 import 'auth_service.dart';
-import 'main.dart';
+import 'otp_verification_page.dart';
 
 class LoginPage extends StatelessWidget {
   const LoginPage({super.key});
@@ -11,9 +11,10 @@ class LoginPage extends StatelessWidget {
     final authService = AuthService();
     try {
       await authService.login(data.name, data.password);
-      return null; // Success
+      
+      return "OTP required";
     } catch (e) {
-      return 'Login failed: $e'; // Return error message to UI
+      return 'Invalid Email or Password'; // Return error message to UI
     }
   }
 
@@ -31,7 +32,7 @@ class LoginPage extends StatelessWidget {
       );
       return null; // Success
     } catch (e) {
-      return 'Registration failed: $e'; // Return error message
+      return 'User Already exists'; // Return error message
     }
   }
 
@@ -49,15 +50,28 @@ class LoginPage extends StatelessWidget {
         accentColor: const Color(0xFF799351),
       ),
       title: 'IDCardScanner',
-      onLogin: _authUser,
+      onLogin: (LoginData data) async {
+        final result = await _authUser(data);
+
+        // Check if the result requires OTP
+        if (result == 'OTP required') {
+          // Navigate to OTP Verification Page
+          Navigator.push(
+            // ignore: use_build_context_synchronously
+            context,
+            MaterialPageRoute(
+              builder: (context) => OtpVerificationPage(identifier: data.name),
+            ),
+          );
+          return "Resend email";
+        }
+
+        return result;
+      },
       onSignup: _registerUser,
       onRecoverPassword: _recoverPassword,
       onSubmitAnimationCompleted: () {
-        // Navigate to the HomePage after successful login
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const IDCardScannerApp()),
-        );
+        // You might not use this anymore since OTP requires navigation
       },
       additionalSignupFields: const [
         UserFormField(
